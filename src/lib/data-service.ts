@@ -1,0 +1,227 @@
+
+
+'use server';
+
+import type { Player, Event, Season, AppSettings, BlindStructureTemplate } from './definitions';
+import { db } from './firebase';
+import type { Timestamp } from 'firebase-admin/firestore';
+
+// Constants for collection names
+const PLAYERS_COLLECTION = 'players';
+const EVENTS_COLLECTION = 'events';
+const SEASONS_COLLECTION = 'seasons';
+const SETTINGS_COLLECTION = 'settings';
+const BLIND_STRUCTURES_COLLECTION = 'blindStructures';
+const GLOBAL_SETTINGS_DOC_ID = 'global';
+
+// Helper to safely convert a Firestore Timestamp or a string to an ISO string
+const toISOString = (dateValue: any): string => {
+  if (!dateValue) return new Date().toISOString(); // Fallback
+  if (typeof dateValue.toDate === 'function') { // It's a Firestore Timestamp
+    return dateValue.toDate().toISOString();
+  }
+  if (typeof dateValue === 'string') { // It's already a string
+    return new Date(dateValue).toISOString();
+  }
+  return new Date().toISOString(); // Fallback for other unexpected types
+};
+
+// --- Data Fetching Functions ---
+
+// Player data functions
+export async function getPlayers(): Promise<Player[]> {
+  try {
+    const playersCol = db.collection(PLAYERS_COLLECTION);
+    const playerSnapshot = await playersCol.get();
+    if (playerSnapshot.empty) {
+      console.log("Firestore 'players' collection is empty.");
+      return [];
+    }
+    const playerList = playerSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        nickname: data.nickname,
+        email: data.email,
+        phone: data.phone,
+        avatar: data.avatar,
+        isGuest: data.isGuest || false,
+        stats: data.stats || { gamesPlayed: 0, wins: 0, winRate: 0, finalTables: 0, itmRate: 0, totalWinnings: 0, totalBuyIns: 0, bestPosition: null, averagePosition: null, seasonStats: {}, profitEvolution: [] },
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      } as Player;
+    });
+    return playerList;
+  } catch (error) {
+    console.error("Error fetching players from Firestore:", error);
+    return [];
+  }
+}
+
+// Event data functions
+export async function getEvents(): Promise<Event[]> {
+  try {
+    const eventsCol = db.collection(EVENTS_COLLECTION);
+    const eventSnapshot = await eventsCol.get();
+    if (eventSnapshot.empty) {
+        console.log("Firestore 'events' collection is empty.");
+        return [];
+    }
+    const eventList = eventSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        date: toISOString(data.date),
+        buyIn: data.buyIn,
+        rebuyPrice: data.rebuyPrice,
+        bounties: data.bounties,
+        mysteryKo: data.mysteryKo,
+        includeBountiesInNet: data.includeBountiesInNet,
+        maxPlayers: data.maxPlayers,
+        startingStack: data.startingStack,
+        status: data.status,
+        seasonId: data.seasonId,
+        prizePool: data.prizePool || { total: 0, distributionType: 'automatic', distribution: [] },
+        blindStructureId: data.blindStructureId,
+        blindStructure: data.blindStructure,
+        participants: data.participants || [],
+        results: data.results || [],
+        createdAt: toISOString(data.createdAt),
+        updatedAt: toISOString(data.updatedAt),
+      } as Event;
+    });
+    return eventList;
+  } catch (error) {
+    console.error("Error fetching events from Firestore:", error);
+    return [];
+  }
+}
+
+// Season data functions
+export async function getSeasons(): Promise<Season[]> {
+  try {
+    const seasonsCol = db.collection(SEASONS_COLLECTION);
+    const seasonSnapshot = await seasonsCol.get();
+    if (seasonSnapshot.empty) {
+      console.log("Firestore 'seasons' collection is empty.");
+      return [];
+    }
+    const seasonList = seasonSnapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      return {
+        id: doc.id,
+        name: data.name,
+        startDate: toISOString(data.startDate),
+        endDate: data.endDate ? toISOString(data.endDate) : undefined,
+        isActive: data.isActive,
+        createdAt: toISOString(data.createdAt),
+        updatedAt: toISOString(data.updatedAt),
+      } as Season;
+    });
+    return seasonList;
+  } catch (error) {
+    console.error("Error fetching seasons from Firestore:", error);
+    return [];
+  }
+}
+
+// Settings data functions
+export async function getSettings(): Promise<AppSettings> {
+  const defaultSettings: AppSettings = { theme: 'light', defaultBuyIn: 20, defaultMaxPlayers: 90 };
+  try {
+    const settingsDocRef = db.collection(SETTINGS_COLLECTION).doc(GLOBAL_SETTINGS_DOC_ID);
+    const settingsSnap = await settingsDocRef.get();
+    
+    if (settingsSnap.exists) {
+      return settingsSnap.data() as AppSettings;
+    } else {
+      console.log("No global settings found in Firestore. Using and saving defaults.");
+      await settingsDocRef.set(defaultSettings);
+      return defaultSettings;
+    }
+  } catch (error) {
+    console.error("Error fetching or initializing settings in Firestore:", error);
+    return defaultSettings;
+  }
+}
+
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  try {
+    const settingsDocRef = db.collection(SETTINGS_COLLECTION).doc(GLOBAL_SETTINGS_DOC_ID);
+    await settingsDocRef.set(settings);
+  } catch (error) {
+    console.error("Error saving settings to Firestore:", error);
+    throw error; // Re-throw to allow caller to handle UI feedback if needed
+  }
+}
+
+// Blind Structures
+export async function getBlindStructures(): Promise<BlindStructureTemplate[]> {
+    const blindCol = db.collection(BLIND_STRUCTURES_COLLECTION);
+    try {
+        const blindSnapshot = await blindCol.get();
+        if (blindSnapshot.empty) {
+            console.log("Firestore 'blindStructures' collection is empty.");
+            // We'll read from the JSON file as a fallback
+            try {
+                const blindsData = await import('@/data/blinds.json');
+                const blinds: BlindStructureTemplate[] = blindsData.default || blindsData;
+                
+                // Let's write this to Firestore so it exists for next time
+                const batch = db.batch();
+                blinds.forEach(structure => {
+                    const docRef = blindCol.doc(structure.id);
+                    batch.set(docRef, structure);
+                });
+                await batch.commit();
+                console.log("Written default blind structures to Firestore.");
+
+                return blinds;
+            } catch (e) {
+                console.error("Could not read fallback blinds.json file.", e);
+                return [];
+            }
+        }
+        const blindList = blindSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name,
+                levels: data.levels || [],
+                startingStack: data.startingStack
+            } as BlindStructureTemplate;
+        });
+        return blindList;
+    } catch (error) {
+        console.error("Error fetching blind structures from Firestore:", error);
+        return [];
+    }
+}
+
+export async function saveBlindStructure(structure: BlindStructureTemplate): Promise<void> {
+    try {
+        const blindDocRef = db.collection(BLIND_STRUCTURES_COLLECTION).doc(structure.id);
+        await blindDocRef.set(structure);
+    } catch (error) {
+        console.error("Error saving blind structure to Firestore:", error);
+        throw error;
+    }
+}
+
+export async function deleteBlindStructure(structureId: string): Promise<{ success: boolean, message?: string }> {
+    if (!structureId) {
+        return { success: false, message: 'Structure ID is required for deletion.' };
+    }
+    try {
+        await db.collection(BLIND_STRUCTURES_COLLECTION).doc(structureId).delete();
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting blind structure from Firestore:", error);
+        return { success: false, message: 'Database error while deleting structure.' };
+    }
+}

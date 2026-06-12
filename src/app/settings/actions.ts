@@ -1,0 +1,103 @@
+
+'use server';
+
+import { z } from 'zod';
+import { saveBlindStructure, getBlindStructures } from '@/lib/data-service';
+import type { BlindStructureTemplate, BlindLevel } from '@/lib/definitions';
+import { revalidatePath } from 'next/cache';
+
+const BlindLevelSchema = z.object({
+  level: z.coerce.number().int(),
+  smallBlind: z.coerce.number().int().nonnegative(),
+  bigBlind: z.coerce.number().int().nonnegative(),
+  ante: z.coerce.number().int().nonnegative().optional().default(0),
+  duration: z.coerce.number().int().positive(),
+  isBreak: z.boolean(),
+});
+
+const BlindStructureSchema = z.object({
+  id: z.string().min(1, 'ID is required.'),
+  name: z.string().min(3, 'Name must be at least 3 characters.'),
+  startingStack: z.coerce.number().int().positive('Starting stack must be a positive number.').optional(),
+  levels: z.string().transform((val, ctx) => {
+    if (!val) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Levels data is missing.' });
+        return z.NEVER;
+    }
+    try {
+      const parsed = JSON.parse(val);
+      const validated = z.array(BlindLevelSchema).safeParse(parsed);
+      if (!validated.success) {
+        console.error("Zod validation error on levels: ", validated.error.flatten());
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid level data in JSON. Please check all fields.',
+        });
+        return z.NEVER;
+      }
+      if (validated.data.length === 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A structure must have at least one level.' });
+        return z.NEVER;
+      }
+      return validated.data;
+    } catch (e) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid JSON format for levels.' });
+      return z.NEVER;
+    }
+  }),
+});
+
+export type BlindStructureFormState = {
+  errors?: {
+    name?: string[];
+    levels?: string[];
+    startingStack?: string[];
+    _form?: string[];
+  };
+  message?: string | null;
+  success?: boolean;
+  newStructure?: BlindStructureTemplate; // Return the new/updated structure on success
+};
+
+export async function saveBlindStructureAction(prevState: BlindStructureFormState, formData: FormData): Promise<BlindStructureFormState> {
+  const validatedFields = BlindStructureSchema.safeParse({
+    id: formData.get('id'),
+    name: formData.get('name'),
+    startingStack: formData.get('startingStack'),
+    levels: formData.get('levels'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Validation failed. Please check the fields.',
+      success: false,
+    };
+  }
+
+  const { id, name, levels, startingStack } = validatedFields.data;
+
+  const structureToSave: BlindStructureTemplate = { id, name, levels, startingStack };
+
+  try {
+    await saveBlindStructure(structureToSave);
+  } catch (error) {
+    console.error('Error saving blind structure:', error);
+    return {
+      message: 'Database Error: Failed to save blind structure.',
+      success: false,
+    };
+  }
+
+  // Revalidate paths where structures might be used
+  revalidatePath('/events/new');
+  revalidatePath('/events/.*edit');
+  revalidatePath('/events/.*live');
+  revalidatePath('/settings'); 
+
+  return {
+    message: `Structure "${name}" saved successfully.`,
+    success: true,
+    newStructure: structureToSave, // Return the saved structure
+  };
+}

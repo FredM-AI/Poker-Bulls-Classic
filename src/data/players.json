@@ -1,0 +1,402 @@
+
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+    "firstName": "Olivier",
+    "lastName": "Garcia",
+    "nickname": "Prof",
+    "email": "olivier.garcia@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "b2c3d4e5-f6a7-8901-2345-678901bcdef0",
+    "firstName": "Régis",
+    "lastName": "Mahé",
+    "nickname": "La Mèche",
+    "email": "regis.mahe@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "c3d4e5f6-a7b8-9012-3456-789012cdef01",
+    "firstName": "Damien",
+    "lastName": "Heckman",
+    "nickname": "The Revenant",
+    "email": "damien.heckman@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "d4e5f6a7-b8c9-0123-4567-890123def012",
+    "firstName": "Hubert",
+    "lastName": "Faucher",
+    "nickname": "Le Marocain",
+    "email": "hubert.faucher@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "e5f6a7b8-c9d0-1234-5678-901234ef0123",
+    "firstName": "Tanguy",
+    "lastName": "Feugier",
+    "nickname": "DJ Raid",
+    "email": "tanguy.feugier@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "f6a7b8c9-d0e1-2345-6789-012345f01234",
+    "firstName": "Frédéric",
+    "lastName": "Chuimert",
+    "nickname": "Oeil de lynx",
+    "email": "frederic.chuimert@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "a7b8c9d0-e1f2-3456-7890-123456012345",
+    "firstName": "Eric",
+    "lastName": "Vernhes",
+    "nickname": "Tony Mitchelli",
+    "email": "eric.vernhes@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "b8c9d0e1-f2a3-4567-8901-234567123456",
+    "firstName": "Jérôme",
+    "lastName": "Ernzen",
+    "nickname": "Némo",
+    "email": "jerome.ernzen@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "c9d0e1f2-a3b4-5678-9012-345678234567",
+    "firstName": "Greg",
+    "lastName": "Szulc",
+    "nickname": "Le Polak",
+    "email": "greg.szulc@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "d0e1f2a3-b4c5-6789-0123-456789345678",
+    "firstName": "Sébastien",
+    "lastName": "Royon",
+    "nickname": "La Friteuse",
+    "email": "sebastien.royon@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "e1f2a3b4-c5d6-7890-1234-567890456789",
+    "firstName": "Olivier",
+    "lastName": "Boynard",
+    "nickname": "Passe-Muraille",
+    "email": "olivier.boynard@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "f2a3b4c5-d6e7-8901-2345-678901567890",
+    "firstName": "Simon",
+    "lastName": "Moisson",
+    "nickname": "Isaac",
+    "email": "simon.moisson@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "a3b4c5d6-e7f8-9012-3456-789012678901",
+    "firstName": "Yann",
+    "lastName": "Blaize",
+    "nickname": "MalAAbar",
+    "email": "yann.blaize@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "b4c5d6e7-f8a9-0123-4567-890123789012",
+    "firstName": "François",
+    "lastName": "Degryse",
+    "nickname": "La Fouine",
+    "email": "francois.degryse@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "c5d6e7f8-a9b0-1234-5678-901234890123",
+    "firstName": "Philippe",
+    "lastName": "Coudray",
+    "nickname": "Le Sniper",
+    "email": "philippe.coudray@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "d6e7f8a9-b0c1-2345-6789-012345901234",
+    "firstName": "Nicolas",
+    "lastName": "Merceron",
+    "nickname": "La Serrure",
+    "email": "nicolas.merceron@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "e7f8a9b0-c1d2-3456-7890-123456a01234",
+    "firstName": "Romarin",
+    "lastName": "Billong",
+    "nickname": "Guest - Rom",
+    "email": "romarin.billong@example.com",
+    "phone": "",
+    "isGuest": true,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "f8a9b0c1-d2e3-4567-8901-234567b12345",
+    "firstName": "Jean-Christophe",
+    "lastName": "Keib",
+    "nickname": "Diesel",
+    "email": "jeanchristophe.keib@example.com",
+    "phone": "",
+    "isGuest": false,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  },
+  {
+    "id": "a9b0c1d2-e3f4-5678-9012-345678c23456",
+    "firstName": "Mika",
+    "lastName": "Bouillu",
+    "nickname": "Guest de la mêche",
+    "email": "mika.bouillu@example.com",
+    "phone": "",
+    "isGuest": true,
+    "isActive": true,
+    "stats": {
+      "gamesPlayed": 0,
+      "wins": 0,
+      "finalTables": 0,
+      "totalWinnings": 0,
+      "totalBuyIns": 0,
+      "bestPosition": null,
+      "averagePosition": null
+    },
+    "createdAt": "2024-07-29T10:00:00.000Z",
+    "updatedAt": "2024-07-29T10:00:00.000Z"
+  }
+]
