@@ -1,48 +1,42 @@
+import * as React from 'react'
+import { Moon, Sun, Palette } from 'lucide-react'
 
-'use client';
-
-import * as React from 'react';
-import { Moon, Sun, Palette } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/components/ui/dropdown-menu'
 
-type Theme = "light" | "dark" | "classic";
-const themes: Theme[] = ["light", "dark", "classic"];
+type Theme = 'light' | 'dark' | 'classic'
+const themes: Theme[] = ['light', 'dark', 'classic']
 
 export default function ThemeToggle() {
-  const [mounted, setMounted] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false)
 
   const setTheme = (theme: Theme) => {
-    localStorage.setItem('poker-theme', theme);
-    // Remove all possible theme classes
-    document.documentElement.classList.remove('light', 'dark', 'theme-classic');
-    // Add the selected theme class
+    localStorage.setItem('poker-theme', theme)
+    document.documentElement.classList.remove('light', 'dark', 'theme-classic')
     if (theme === 'classic') {
-      document.documentElement.classList.add('theme-classic');
+      document.documentElement.classList.add('theme-classic')
     } else {
-      document.documentElement.classList.add(theme);
+      document.documentElement.classList.add(theme)
     }
-  };
+  }
 
   React.useEffect(() => {
-    setMounted(true);
-    const storedTheme = localStorage.getItem('poker-theme') as Theme | null;
+    setMounted(true)
+    const storedTheme = localStorage.getItem('poker-theme') as Theme | null
     if (storedTheme && themes.includes(storedTheme)) {
-        setTheme(storedTheme);
+      setTheme(storedTheme)
     } else {
-        setTheme('light');
+      setTheme('light')
     }
-  }, []);
-  
+  }, [])
+
   if (!mounted) {
-    // Avoid rendering the toggle on the server to prevent hydration mismatch
-    return <div style={{width: '40px', height: '40px'}} />;
+    return <div style={{ width: '40px', height: '40px' }} />
   }
 
   return (
@@ -63,10 +57,10 @@ export default function ThemeToggle() {
           <span>Dark</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme('classic')}>
-           <Palette className="mr-2 h-4 w-4" />
+          <Palette className="mr-2 h-4 w-4" />
           <span>Classic</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

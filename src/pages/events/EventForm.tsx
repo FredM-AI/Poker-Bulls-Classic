@@ -1,0 +1,632 @@
+import * as React from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import type { Event, Player, EventStatus, Season, BlindStructureTemplate } from '@/lib/types'
+import { eventStatuses } from '@/lib/types'
+import type { EventInput } from '@/lib/data-service'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
+import { Trophy, PlusCircle, MinusCircle, Users, CalendarDays, Settings, Info, Repeat, Star, Gift, BarChart3, Clock, Hash, Loader2 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import DeleteEventButton from '@/components/DeleteEventButton'
+import { getPlayerDisplayName } from '@/lib/stats-service'
+
+interface EventFormProps {
+  event?: Event
+  allPlayers: Player[]
+  allSeasons: Season[]
+  blindStructures: BlindStructureTemplate[]
+  formTitle: string
+  formDescription: string
+  submitButtonText: string
+  defaultSeasonId?: string
+  onSubmit: (data: EventInput) => Promise<string>
+}
+
+type PositionalResultEntry = {
+  position: number
+  playerId: string | null
+  prize: string
+  bountiesWon: string
+  mysteryKoWon: string
+}
+
+interface EnrichedParticipant {
+  player: Player
+  rebuys: string
+}
+
+const NO_PLAYER_SELECTED_VALUE = '_internal_no_player_selected_'
+const NO_SEASON_SELECTED_VALUE = 'NONE'
+const NO_BLIND_STRUCTURE_VALUE = 'NONE'
+
+const sortPlayersWithGuestsLast = (a: Player, b: Player): number => {
+  const aIsGuest = a.isGuest || false
+  const bIsGuest = b.isGuest || false
+  if (aIsGuest !== bIsGuest) return aIsGuest ? 1 : -1
+  return getPlayerDisplayName(a).localeCompare(getPlayerDisplayName(b))
+}
+
+function toDateTimeLocalValue(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+export default function EventForm({
+  event,
+  allPlayers,
+  allSeasons,
+  blindStructures,
+  formTitle,
+  formDescription,
+  submitButtonText,
+  defaultSeasonId,
+  onSubmit,
+}: EventFormProps) {
+  const navigate = useNavigate()
+  const { toast } = useToast()
+
+  const [name, setName] = React.useState(event?.name || '')
+  const [dateValue, setDateValue] = React.useState(toDateTimeLocalValue(event?.date))
+  const [currentStatus, setCurrentStatus] = React.useState<EventStatus>(event?.status || 'draft')
+  const [selectedSeasonId, setSelectedSeasonId] = React.useState<string>(event?.seasonId || defaultSeasonId || NO_SEASON_SELECTED_VALUE)
+  const [selectedBlindStructureId, setSelectedBlindStructureId] = React.useState<string>(
+    event?.blindStructureId || (blindStructures.length > 0 ? blindStructures[0].id : NO_BLIND_STRUCTURE_VALUE),
+  )
+  const [includeBounties, setIncludeBounties] = React.useState<boolean>(event?.includeBountiesInNet ?? true)
+
+  const [buyInValue, setBuyInValue] = React.useState<string>(event ? (event.buyIn?.toString() ?? '0') : '20')
+  const [rebuyPrice, setRebuyPrice] = React.useState<string>(event ? (event.rebuyPrice?.toString() ?? '0') : '20')
+  const [bountiesValue, setBountiesValue] = React.useState<string>(event?.bounties?.toString() || '0')
+  const [mysteryKoValue, setMysteryKoValue] = React.useState<string>(event?.mysteryKo?.toString() || '0')
+  const [startingStackValue, setStartingStackValue] = React.useState<string>(event?.startingStack?.toString() || '10000')
+  const [totalPrizePoolValue, setTotalPrizePoolValue] = React.useState<string>(event?.prizePool.total?.toString() || '0')
+
+  const [availablePlayers, setAvailablePlayers] = React.useState<Player[]>(() => {
+    const initialParticipantIds = new Set(event?.participants || [])
+    return allPlayers.filter((p) => p.isActive && !initialParticipantIds.has(p.id)).sort(sortPlayersWithGuestsLast)
+  })
+  const [enrichedParticipants, setEnrichedParticipants] = React.useState<EnrichedParticipant[]>(() => {
+    const initialParticipantIds = new Set(event?.participants || [])
+    return allPlayers
+      .filter((p) => initialParticipantIds.has(p.id))
+      .map((p) => {
+        const resultForPlayer = event?.results.find((r) => r.playerId === p.id)
+        return { player: p, rebuys: resultForPlayer?.rebuys?.toString() || '0' }
+      })
+      .sort((a, b) => getPlayerDisplayName(a.player).localeCompare(getPlayerDisplayName(b.player)))
+  })
+
+  const [positionalResults, setPositionalResults] = React.useState<PositionalResultEntry[]>(() => {
+    const numPositions = enrichedParticipants.length
+    const table: PositionalResultEntry[] = []
+    for (let i = 1; i <= numPositions; i++) {
+      table.push({ position: i, playerId: null, prize: '0', bountiesWon: '0', mysteryKoWon: '0' })
+    }
+    event?.results.forEach((savedResult) => {
+      const index = savedResult.position - 1
+      if (index >= 0 && index < table.length) {
+        table[index] = {
+          position: savedResult.position,
+          playerId: savedResult.playerId,
+          prize: savedResult.prize.toString(),
+          bountiesWon: (savedResult.bountiesWon || 0).toString(),
+          mysteryKoWon: (savedResult.mysteryKoWon || 0).toString(),
+        }
+      }
+    })
+    return table
+  })
+
+  const [searchTerm, setSearchTerm] = React.useState('')
+  const [formError, setFormError] = React.useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    const numPositions = enrichedParticipants.length
+    setPositionalResults((prev) => {
+      const table: PositionalResultEntry[] = []
+      for (let i = 1; i <= numPositions; i++) {
+        table.push(prev.find((r) => r.position === i) || { position: i, playerId: null, prize: '0', bountiesWon: '0', mysteryKoWon: '0' })
+      }
+      // Drop entries for players no longer participating
+      const participantIdsSet = new Set(enrichedParticipants.map((p) => p.player.id))
+      return table.map((row) => (row.playerId && !participantIdsSet.has(row.playerId) ? { ...row, playerId: null, prize: '0', bountiesWon: '0', mysteryKoWon: '0' } : row))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrichedParticipants.length])
+
+  React.useEffect(() => {
+    const numParticipants = enrichedParticipants.length
+    const currentBuyInNum = parseInt(buyInValue) || 0
+    const currentRebuyPriceNum = parseInt(rebuyPrice) || 0
+
+    let calculatedTotal = 0
+    if (currentBuyInNum > 0) calculatedTotal += numParticipants * currentBuyInNum
+    if (currentRebuyPriceNum > 0) {
+      enrichedParticipants.forEach((participant) => {
+        const rebuys = parseInt(participant.rebuys) || 0
+        if (rebuys > 0) calculatedTotal += rebuys * currentRebuyPriceNum
+      })
+    }
+    setTotalPrizePoolValue(calculatedTotal.toString())
+  }, [enrichedParticipants, buyInValue, rebuyPrice])
+
+  React.useEffect(() => {
+    const prizePoolNum = parseInt(totalPrizePoolValue) || 0
+    const numParticipants = enrichedParticipants.length
+
+    const hasManualPrizes = positionalResults.some((r) => parseInt(r.prize, 10) > 0)
+    if (hasManualPrizes) return
+
+    if (prizePoolNum <= 0 || numParticipants === 0) {
+      setPositionalResults((prev) => prev.map((row) => ({ ...row, prize: '0' })))
+      return
+    }
+
+    let prizes: { [key: number]: number } = {}
+    if (numParticipants >= 15) {
+      const fourthPrize = 20
+      const remainingForTop3 = prizePoolNum - fourthPrize
+      if (remainingForTop3 > 0) {
+        const thirdPrize = Math.round((remainingForTop3 * 0.2) / 10) * 10
+        const secondPrize = Math.round((remainingForTop3 * 0.3) / 10) * 10
+        const firstPrize = remainingForTop3 - secondPrize - thirdPrize
+        prizes = { 1: firstPrize, 2: secondPrize, 3: thirdPrize, 4: fourthPrize }
+      } else {
+        const thirdPrize = Math.round((prizePoolNum * 0.2) / 10) * 10
+        const secondPrize = Math.round((prizePoolNum * 0.3) / 10) * 10
+        prizes = { 1: prizePoolNum - secondPrize - thirdPrize, 2: secondPrize, 3: thirdPrize }
+      }
+    } else if (numParticipants >= 3) {
+      const thirdPrize = Math.round((prizePoolNum * 0.2) / 10) * 10
+      const secondPrize = Math.round((prizePoolNum * 0.3) / 10) * 10
+      prizes = { 1: prizePoolNum - secondPrize - thirdPrize, 2: secondPrize, 3: thirdPrize }
+    } else if (numParticipants === 2) {
+      const secondPrize = Math.round((prizePoolNum * 0.35) / 10) * 10
+      prizes = { 1: prizePoolNum - secondPrize, 2: secondPrize }
+    } else if (numParticipants === 1) {
+      prizes = { 1: prizePoolNum }
+    }
+
+    setPositionalResults((prevResults) => prevResults.map((row) => ({ ...row, prize: prizes[row.position]?.toString() || '0' })))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPrizePoolValue, enrichedParticipants.length])
+
+  React.useEffect(() => {
+    if (selectedBlindStructureId !== NO_BLIND_STRUCTURE_VALUE) {
+      const selected = blindStructures.find((bs) => bs.id === selectedBlindStructureId)
+      if (selected?.startingStack) {
+        setStartingStackValue(selected.startingStack.toString())
+      }
+    }
+  }, [selectedBlindStructureId, blindStructures])
+
+  const handleAddPlayer = (player: Player) => {
+    setEnrichedParticipants((prev) => [...prev, { player, rebuys: '0' }].sort((a, b) => getPlayerDisplayName(a.player).localeCompare(getPlayerDisplayName(b.player))))
+    setAvailablePlayers((prev) => prev.filter((p) => p.id !== player.id))
+  }
+
+  const handleRemovePlayer = (participantToRemove: EnrichedParticipant) => {
+    if (participantToRemove.player.isActive) {
+      setAvailablePlayers((prev) => [...prev, participantToRemove.player].sort(sortPlayersWithGuestsLast))
+    }
+    setEnrichedParticipants((prev) => prev.filter((p) => p.player.id !== participantToRemove.player.id))
+  }
+
+  const handleParticipantRebuyChange = (playerId: string, rebuyValue: string) => {
+    setEnrichedParticipants((prev) => prev.map((ep) => (ep.player.id === playerId ? { ...ep, rebuys: rebuyValue } : ep)))
+  }
+
+  const handlePositionalResultChange = (position: number, field: 'playerId' | 'prize' | 'bountiesWon' | 'mysteryKoWon', value: string | null) => {
+    setPositionalResults((prev) => prev.map((row) => (row.position === position ? { ...row, [field]: value === NO_PLAYER_SELECTED_VALUE ? null : value } : row)))
+  }
+
+  const filteredAvailablePlayers = availablePlayers.filter((player) =>
+    `${getPlayerDisplayName(player)} ${player.firstName} ${player.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
+  const isCreating = !event?.id
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError(null)
+
+    if (name.trim().length < 3) {
+      setFormError('Event name must be at least 3 characters.')
+      return
+    }
+    if (!dateValue) {
+      setFormError('Date is required.')
+      return
+    }
+
+    const finalResults = positionalResults
+      .filter((row) => row.playerId && row.playerId !== NO_PLAYER_SELECTED_VALUE)
+      .map((row) => {
+        const participant = enrichedParticipants.find((p) => p.player.id === row.playerId)
+        const rebuysCount = participant ? parseInt(participant.rebuys) || 0 : 0
+        return {
+          playerId: row.playerId!,
+          position: row.position,
+          prize: parseInt(row.prize) || 0,
+          rebuys: rebuysCount,
+          bountiesWon: parseInt(row.bountiesWon) || 0,
+          mysteryKoWon: parseInt(row.mysteryKoWon) || 0,
+        }
+      })
+
+    let blindStructureSnapshot
+    if (selectedBlindStructureId !== NO_BLIND_STRUCTURE_VALUE) {
+      const selected = blindStructures.find((bs) => bs.id === selectedBlindStructureId)
+      blindStructureSnapshot = selected?.levels
+    }
+
+    setIsSubmitting(true)
+    try {
+      const eventId = await onSubmit({
+        name,
+        date: new Date(dateValue).toISOString(),
+        buyIn: parseInt(buyInValue) || 0,
+        rebuyPrice: parseInt(rebuyPrice) || undefined,
+        bounties: parseInt(bountiesValue) || undefined,
+        mysteryKo: parseInt(mysteryKoValue) || undefined,
+        includeBountiesInNet: includeBounties,
+        startingStack: parseInt(startingStackValue) || undefined,
+        status: currentStatus,
+        seasonId: selectedSeasonId === NO_SEASON_SELECTED_VALUE ? null : selectedSeasonId,
+        blindStructureId: selectedBlindStructureId === NO_BLIND_STRUCTURE_VALUE ? null : selectedBlindStructureId,
+        blindStructureSnapshot,
+        prizePoolTotal: parseInt(totalPrizePoolValue) || 0,
+        participantIds: enrichedParticipants.map((ep) => ep.player.id),
+        results: finalResults,
+      })
+      toast({ title: 'Success!', description: `Event ${event ? 'updated' : 'created'} successfully.` })
+      navigate(`/events/${eventId}`)
+    } catch (err: any) {
+      setFormError(err?.message || 'An unexpected error occurred.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Card className="max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="font-headline text-2xl">{formTitle}</CardTitle>
+        <CardDescription>{formDescription}</CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          <div className="space-y-4 p-4 border rounded-lg shadow-sm">
+            <h3 className="font-headline text-lg flex items-center">
+              <Info className="mr-2 h-5 w-5 text-primary" />
+              Event Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="name">Event Name</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required className="h-9" />
+              </div>
+              <div>
+                <Label htmlFor="date" className="flex items-center">
+                  <CalendarDays className="mr-1 h-4 w-4" />
+                  Date
+                </Label>
+                <Input id="date" type="datetime-local" value={dateValue} onChange={(e) => setDateValue(e.target.value)} required className="h-9" />
+              </div>
+              <div>
+                <Label htmlFor="status">Event Status</Label>
+                <Select value={currentStatus} onValueChange={(value) => setCurrentStatus(value as EventStatus)}>
+                  <SelectTrigger id="status" className="h-9">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eventStatuses.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="pt-2">
+              <Label htmlFor="seasonId-select" className="flex items-center">
+                <BarChart3 className="mr-2 h-4 w-4 text-primary" />
+                Link to Season (Optional)
+              </Label>
+              <Select value={selectedSeasonId} onValueChange={setSelectedSeasonId}>
+                <SelectTrigger id="seasonId-select" className="h-9">
+                  <SelectValue placeholder="-- Select a Season --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_SEASON_SELECTED_VALUE}>-- No Season --</SelectItem>
+                  {[...allSeasons]
+                    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                    .map((season) => (
+                      <SelectItem key={season.id} value={season.id}>
+                        {season.name} {season.isActive ? '(Active)' : '(Inactive)'}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 border rounded-lg shadow-sm">
+            <h3 className="font-headline text-lg flex items-center">
+              <Settings className="mr-2 h-5 w-5 text-primary" />
+              Event Configuration
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="buyIn">Buy-in (Main Prize Pool) (€)</Label>
+                <Input id="buyIn" type="number" step="1" min="0" value={buyInValue} onChange={(e) => setBuyInValue(e.target.value)} required className="h-9" placeholder="20" />
+              </div>
+              <div>
+                <Label htmlFor="rebuyPrice">Rebuy Price (to Prize Pool) (€)</Label>
+                <Input id="rebuyPrice" type="number" step="1" min="0" placeholder="20" value={rebuyPrice} onChange={(e) => setRebuyPrice(e.target.value)} className="h-9" />
+              </div>
+              <div>
+                <Label htmlFor="prizePoolTotal">Total Main Prize Pool (€)</Label>
+                <Input id="prizePoolTotal" type="number" step="1" min="0" value={totalPrizePoolValue} onChange={(e) => setTotalPrizePoolValue(e.target.value)} required className="h-9" placeholder="Auto-calculé" />
+              </div>
+              <div>
+                <Label htmlFor="bounties" className="flex items-center">
+                  <Star className="mr-1 h-4 w-4 text-yellow-500" />
+                  Bounty Value (€)
+                </Label>
+                <Input id="bounties" type="number" step="1" min="0" placeholder="0" value={bountiesValue} onChange={(e) => setBountiesValue(e.target.value)} className="h-9" />
+              </div>
+              <div>
+                <Label htmlFor="mysteryKo" className="flex items-center">
+                  <Gift className="mr-1 h-4 w-4 text-purple-500" />
+                  Mystery KO Value (€)
+                </Label>
+                <Input id="mysteryKo" type="number" step="1" min="0" placeholder="0" value={mysteryKoValue} onChange={(e) => setMysteryKoValue(e.target.value)} className="h-9" />
+              </div>
+              <div>
+                <Label htmlFor="startingStack" className="flex items-center">
+                  <Hash className="mr-1 h-4 w-4" />
+                  Starting Stack
+                </Label>
+                <Input id="startingStack" type="number" step="1000" min="0" placeholder="10000" value={startingStackValue} onChange={(e) => setStartingStackValue(e.target.value)} className="h-9" />
+              </div>
+              <div className="flex items-center space-x-2 pt-2 md:col-span-2">
+                <Switch id="includeBountiesInNet" checked={includeBounties} onCheckedChange={setIncludeBounties} />
+                <div>
+                  <Label htmlFor="includeBountiesInNet">Bounties in Net Calc</Label>
+                  <p className="text-xs text-muted-foreground">If off, bounty/MSKO costs are not subtracted from player net results.</p>
+                </div>
+              </div>
+            </div>
+            <div className="pt-2">
+              <Label htmlFor="blindStructureId-select" className="flex items-center">
+                <Clock className="mr-2 h-4 w-4 text-primary" />
+                Blind Structure
+              </Label>
+              <Select value={selectedBlindStructureId} onValueChange={setSelectedBlindStructureId}>
+                <SelectTrigger id="blindStructureId-select" className="h-9">
+                  <SelectValue placeholder="-- Select a Structure --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_BLIND_STRUCTURE_VALUE}>-- No Structure --</SelectItem>
+                  {[...blindStructures]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((structure) => (
+                      <SelectItem key={structure.id} value={structure.id}>
+                        {structure.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 border rounded-lg shadow-sm">
+            <h3 className="font-headline text-lg flex items-center">
+              <Users className="mr-2 h-5 w-5 text-primary" />
+              Participants ({enrichedParticipants.length})
+            </h3>
+            <div className="mb-3">
+              <Label htmlFor="searchPlayers">Search Available Players</Label>
+              <Input id="searchPlayers" placeholder="Search by name or nickname..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full h-9" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="md:col-span-2">
+                <Label>Available Players ({availablePlayers.length})</Label>
+                <ScrollArea className="h-60 w-full rounded-md border p-1.5">
+                  {filteredAvailablePlayers.length > 0 ? (
+                    filteredAvailablePlayers.map((player) => (
+                      <div key={player.id} className="flex items-center justify-between p-1.5 hover:bg-muted/50 rounded-md text-sm">
+                        <span>{getPlayerDisplayName(player)}</span>
+                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => handleAddPlayer(player)} title="Add player">
+                          <PlusCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground p-2 text-sm">No players available or matching search.</p>
+                  )}
+                </ScrollArea>
+              </div>
+              <div className="md:col-span-3">
+                <Label>Selected Participants ({enrichedParticipants.length})</Label>
+                <ScrollArea className="h-60 w-full rounded-md border p-1.5">
+                  {enrichedParticipants.length > 0 ? (
+                    enrichedParticipants.map((ep) => (
+                      <div key={ep.player.id} className="flex items-center justify-between p-1.5 hover:bg-muted/50 rounded-md gap-2 text-sm">
+                        <span className="flex-grow">{getPlayerDisplayName(ep.player)}</span>
+                        <div className="flex items-center gap-1 w-28">
+                          <Label htmlFor={`rebuy-${ep.player.id}`} className="sr-only">
+                            Rebuys
+                          </Label>
+                          <Input
+                            type="number"
+                            id={`rebuy-${ep.player.id}`}
+                            min="0"
+                            step="1"
+                            value={ep.rebuys}
+                            onChange={(e) => handleParticipantRebuyChange(ep.player.id, e.target.value)}
+                            className="h-8 w-16 text-center"
+                            placeholder="Rebuys"
+                          />
+                          <Repeat className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => handleRemovePlayer(ep)} title="Remove player">
+                          <MinusCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground p-2 text-sm">No participants selected.</p>
+                  )}
+                </ScrollArea>
+              </div>
+            </div>
+          </div>
+
+          {enrichedParticipants.length > 0 && (
+            <div className="space-y-4 p-4 border rounded-lg shadow-sm">
+              <h3 className="font-headline text-lg flex items-center">
+                <Trophy className="mr-2 h-5 w-5 text-primary" />
+                Event Results
+              </h3>
+              <ScrollArea className="max-h-96 w-full rounded-md border overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[8%] text-center p-2">Pos</TableHead>
+                      <TableHead className="w-[25%] p-2">Player</TableHead>
+                      <TableHead className="w-[12%] text-center p-2">Rebuys</TableHead>
+                      <TableHead className="w-[15%] text-right p-2">Prize (€)</TableHead>
+                      <TableHead className="w-[15%] text-right p-2">Bounty (€)</TableHead>
+                      <TableHead className="w-[15%] text-right p-2">MSKO (€)</TableHead>
+                      <TableHead className="w-[15%] text-right p-2">Net (€)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {positionalResults.map((row) => {
+                      const participant = enrichedParticipants.find((p) => p.player.id === row.playerId)
+                      const rebuysDisplay = participant ? participant.rebuys : '0'
+
+                      const prizeNum = parseInt(row.prize) || 0
+                      const bountiesWonNum = parseInt(row.bountiesWon) || 0
+                      const mysteryKoWonNum = parseInt(row.mysteryKoWon) || 0
+
+                      const mainBuyInNum = parseInt(buyInValue) || 0
+                      const eventBountyValueNum = parseInt(bountiesValue) || 0
+                      const eventMysteryKoValueNum = parseInt(mysteryKoValue) || 0
+                      const rebuysNum = participant ? parseInt(participant.rebuys) || 0 : 0
+                      const rebuyPriceNum = parseInt(rebuyPrice) || 0
+
+                      let calculatedFinalResult = 0
+                      if (row.playerId && row.playerId !== NO_PLAYER_SELECTED_VALUE) {
+                        const investmentInMainPot = mainBuyInNum + rebuysNum * rebuyPriceNum
+                        if (includeBounties) {
+                          const bountyAndMkoCostsPerEntry = eventBountyValueNum + eventMysteryKoValueNum
+                          const totalInvestmentInExtras = (1 + rebuysNum) * bountyAndMkoCostsPerEntry
+                          const totalInvestment = investmentInMainPot + totalInvestmentInExtras
+                          const totalWinnings = prizeNum + bountiesWonNum + mysteryKoWonNum
+                          calculatedFinalResult = totalWinnings - totalInvestment
+                        } else {
+                          calculatedFinalResult = prizeNum - investmentInMainPot
+                        }
+                      }
+
+                      return (
+                        <TableRow key={row.position}>
+                          <TableCell className="font-medium py-1 px-2 text-center">{row.position}</TableCell>
+                          <TableCell className="py-1 px-2">
+                            <Select value={row.playerId || NO_PLAYER_SELECTED_VALUE} onValueChange={(value) => handlePositionalResultChange(row.position, 'playerId', value)}>
+                              <SelectTrigger className="w-full h-8 text-xs">
+                                <SelectValue placeholder="-- Select Player --" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={NO_PLAYER_SELECTED_VALUE}>-- None --</SelectItem>
+                                {enrichedParticipants.map((ep) => (
+                                  <SelectItem key={ep.player.id} value={ep.player.id} disabled={positionalResults.some((pr) => pr.playerId === ep.player.id && pr.position !== row.position)}>
+                                    {getPlayerDisplayName(ep.player)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-1 px-2 text-center">
+                            <Input type="text" value={rebuysDisplay} readOnly className="h-8 text-center bg-muted/50 border-none" />
+                          </TableCell>
+                          <TableCell className="py-1 px-2">
+                            <Input
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="0"
+                              value={row.prize}
+                              onChange={(e) => handlePositionalResultChange(row.position, 'prize', e.target.value)}
+                              className="text-right h-8"
+                              disabled={!row.playerId || row.playerId === NO_PLAYER_SELECTED_VALUE}
+                            />
+                          </TableCell>
+                          <TableCell className="py-1 px-2">
+                            <Input
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="0"
+                              value={row.bountiesWon}
+                              onChange={(e) => handlePositionalResultChange(row.position, 'bountiesWon', e.target.value)}
+                              className="text-right h-8"
+                              disabled={!row.playerId || row.playerId === NO_PLAYER_SELECTED_VALUE}
+                            />
+                          </TableCell>
+                          <TableCell className="py-1 px-2">
+                            <Input
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="0"
+                              value={row.mysteryKoWon}
+                              onChange={(e) => handlePositionalResultChange(row.position, 'mysteryKoWon', e.target.value)}
+                              className="text-right h-8"
+                              disabled={!row.playerId || row.playerId === NO_PLAYER_SELECTED_VALUE}
+                            />
+                          </TableCell>
+                          <TableCell className="py-1 px-2 text-right">
+                            <Input type="text" value={calculatedFinalResult.toString()} readOnly className="h-8 text-right bg-muted/50 border-none" />
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+                {positionalResults.length === 0 && <p className="text-muted-foreground p-4 text-center">Add participants to enable result entry.</p>}
+              </ScrollArea>
+            </div>
+          )}
+
+          {formError && <p className="text-sm text-destructive mt-2 text-center p-2 bg-destructive/10 rounded-md">{formError}</p>}
+        </CardContent>
+        <CardFooter className="flex justify-between items-center p-4 border-t">
+          <div>{!isCreating && event && <DeleteEventButton eventId={event.id} eventName={event.name} redirectAfterDelete />}</div>
+          <div className="flex gap-4">
+            <Button variant="outline" asChild>
+              <Link to={event ? `/events/${event.id}` : '/events'}>Cancel</Link>
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : submitButtonText}
+            </Button>
+          </div>
+        </CardFooter>
+      </form>
+    </Card>
+  )
+}

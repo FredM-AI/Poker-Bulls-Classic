@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 33% 97%;
+    --foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 355 71% 38%;
+    --primary-foreground: 355 0% 100%;
+
+    --secondary: 45 40% 85%;
+    --secondary-foreground: 240 10% 3.9%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 45 59% 77%;
+    --accent-foreground: 240 10% 3.9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 45 35% 70%;
+    --input: 240 5.9% 90%;
+    --ring: 355 71% 38%;
+
+    --chart-1: 355 71% 38%;
+    --chart-2: 45 59% 77%;
+    --chart-3: 30 60% 60%;
+    --chart-4: 0 30% 50%;
+    --chart-5: 50 40% 40%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 13%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 42 84% 50%;
+    --primary-foreground: 148 70% 10%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 42 84% 25%;
+    --accent-foreground: 42 84% 90%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 25%;
+    --input: 217 33% 17%;
+    --ring: 42 84% 50%;
+  }
+
+  .theme-classic {
+    --background: 148 70% 21%;
+    --foreground: 42 75% 85%;
+
+    --card: 151 70% 18%;
+    --card-foreground: 42 75% 85%;
+
+    --popover: 148 70% 15%;
+    --popover-foreground: 42 75% 85%;
+
+    --primary: 42 84% 50%;
+    --primary-foreground: 148 70% 10%;
+
+    --secondary: 148 50% 30%;
+    --secondary-foreground: 42 75% 85%;
+
+    --muted: 151 50% 25%;
+    --muted-foreground: 151 25% 65%;
+
+    --accent: 148 50% 30%;
+    --accent-foreground: 42 84% 50%;
+
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 42 75% 85%;
+
+    --border: 148 50% 30%;
+    --input: 148 50% 25%;
+    --ring: 42 84% 50%;
+
+    --chart-1: 42 84% 50%;
+    --chart-2: 80 60% 60%;
+    --chart-3: 42 60% 70%;
+    --chart-4: 150 40% 50%;
+    --chart-5: 0 0% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+}

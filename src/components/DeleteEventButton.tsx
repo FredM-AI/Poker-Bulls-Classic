@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,29 +17,29 @@ import * as dataService from '@/lib/data-service'
 import { useToast } from '@/hooks/use-toast'
 import { useInvalidateAll } from '@/hooks/useData'
 
-interface DeletePlayerButtonProps {
-  playerId: string
-  playerName: string
+interface DeleteEventButtonProps {
+  eventId: string
+  eventName: string
+  className?: string
+  redirectAfterDelete?: boolean
 }
 
-export default function DeletePlayerButton({ playerId, playerName }: DeletePlayerButtonProps) {
+export default function DeleteEventButton({ eventId, eventName, className, redirectAfterDelete }: DeleteEventButtonProps) {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const { toast } = useToast()
+  const navigate = useNavigate()
   const invalidateAll = useInvalidateAll()
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      await dataService.deletePlayer(playerId)
+      await dataService.deleteEvent(eventId)
       invalidateAll()
-      toast({ title: 'Player Deleted', description: `The player "${playerName}" has been successfully deleted.` })
+      toast({ title: 'Event Deleted', description: `The event "${eventName}" has been successfully deleted.` })
+      if (redirectAfterDelete) navigate('/events')
     } catch (error: any) {
-      toast({
-        title: 'Error Deleting Player',
-        description: error?.message || 'An unexpected error occurred.',
-        variant: 'destructive',
-      })
+      toast({ title: 'Error Deleting Event', description: error?.message || 'An unexpected error occurred.', variant: 'destructive' })
     } finally {
       setIsDeleting(false)
       setIsAlertOpen(false)
@@ -48,28 +49,25 @@ export default function DeletePlayerButton({ playerId, playerName }: DeletePlaye
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="icon" className="h-8 w-8" title="Delete Player" disabled={isDeleting}>
-          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        <Button variant="destructive" className={className} disabled={isDeleting}>
+          {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+          {isDeleting ? 'Deleting...' : 'Delete'}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the player
-            <strong className="ml-1 mr-1 text-foreground">"{playerName}"</strong>
-            and all associated data. This action is irreversible.
+            This action cannot be undone. This will permanently delete the event
+            <strong className="ml-1 mr-1 text-foreground">"{eventName}"</strong>
+            and all of its associated data.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-          >
+          <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
             {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isDeleting ? 'Deleting...' : 'Yes, delete player'}
+            {isDeleting ? 'Deleting...' : 'Yes, delete event'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

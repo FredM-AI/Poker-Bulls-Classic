@@ -1,19 +1,11 @@
-import Link from 'next/link';
-import Image from 'next/image';
+import { Link } from 'react-router-dom'
 
 const Logo = () => {
   return (
-    <Link href="/" className="flex items-center gap-3 text-primary hover:text-primary/90 transition-colors">
-      <Image 
-        src="/poker-bulls-club-logo.png"
-        alt="Poker Bulls Club Logo"
-        width={60}
-        height={60}
-        className="h-14 w-auto"
-        unoptimized
-      />
+    <Link to="/" className="flex items-center gap-3 text-primary hover:text-primary/90 transition-colors">
+      <img src="/poker-bulls-club-logo.png" alt="Poker Bulls Club Logo" className="h-14 w-auto" />
     </Link>
-  );
-};
+  )
+}
 
-export default Logo;
+export default Logo
