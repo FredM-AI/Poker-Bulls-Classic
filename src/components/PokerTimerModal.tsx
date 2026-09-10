@@ -331,7 +331,7 @@ export default function PokerTimerModal({
           </div>
 
           <header className="timer-header">
-            <div className="flex-1 flex gap-6 items-center">
+            <div className="flex-1 flex gap-2 sm:gap-6 items-center">
               <Button variant="ghost" size="icon" onClick={refreshBlindStructures} className="timer-header-button h-7 w-7 text-gray-400 hover:text-white">
                 <RefreshCw className="h-5 w-5" />
               </Button>
@@ -357,8 +357,8 @@ export default function PokerTimerModal({
           </header>
 
           <div className="timer-sticky-content">
-            <div className="w-full h-full flex flex-row items-start gap-8">
-              <div className="flex-grow flex flex-col h-full">
+            <div className="w-full flex flex-col lg:flex-row items-stretch gap-3 lg:gap-8">
+              <div className="flex-grow flex flex-col min-w-0">
                 <div className="timer-display-area">
                   <div className="timer-countdown">{formatTime(timeLeft)}</div>
                   <div className="timer-blinds-area">
@@ -380,7 +380,7 @@ export default function PokerTimerModal({
                   </div>
                 </div>
               </div>
-              <div className="flex-shrink-0 w-[350px] grid grid-cols-1 gap-1 h-full">
+              <div className="flex-shrink-0 w-full lg:w-[350px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1">
                 <div className="timer-stats-box">
                   <h4 className="timer-stats-title">Status &amp; Stats</h4>
                   <div className="timer-stats-row">
