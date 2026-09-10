@@ -85,7 +85,7 @@ export default function SeasonDetailPage() {
             {formatDate(season.startDate)} - {formatDate(season.endDate)}
           </p>
         </div>
-        {role && (
+        {role === 'admin' && (
           <Button asChild>
             <Link to={`/seasons/${season.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" /> Edit Season

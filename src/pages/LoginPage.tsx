@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
-  const { login, role } = useAuth()
+  const { login, continueAsGuest, role } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [email, setEmail] = React.useState('')
@@ -17,8 +17,12 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   React.useEffect(() => {
-    if (role) {
+    if (role === 'admin' || role === 'floor_manager') {
       navigate(searchParams.get('redirectedFrom') || '/dashboard', { replace: true })
+    } else if (role === 'guest') {
+      // Guests never have access to the routes real accounts redirect back to
+      // (settings, live management, etc.), so just send them to the dashboard.
+      navigate('/dashboard', { replace: true })
     }
   }, [role, navigate, searchParams])
 
@@ -69,6 +73,17 @@ export default function LoginPage() {
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Se connecter'}
             </Button>
           </form>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">ou</span>
+            </div>
+          </div>
+          <Button type="button" variant="outline" className="w-full" onClick={continueAsGuest}>
+            Continuer en tant qu'invité
+          </Button>
         </CardContent>
       </Card>
     </div>

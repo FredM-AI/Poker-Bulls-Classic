@@ -138,4 +138,4 @@ export interface HallOfFameStats {
   totalPrizePools: number
 }
 
-export type UserRole = 'admin' | 'floor_manager'
+export type UserRole = 'admin' | 'floor_manager' | 'guest'

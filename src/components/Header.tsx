@@ -88,9 +88,10 @@ const Header = () => {
 
               <div className="flex items-center gap-2 ml-2">
                 <ThemeToggle />
+                {role === 'guest' && <span className="text-xs text-muted-foreground px-2">Invité</span>}
                 {isAuthenticated ? (
                   <Button variant="ghost" size="sm" onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                    <LogOut className="mr-2 h-4 w-4" /> {role === 'guest' ? 'Quitter' : 'Logout'}
                   </Button>
                 ) : (
                   <Button variant="ghost" asChild>
@@ -153,7 +154,7 @@ const Header = () => {
                     <div className="mt-4 border-t pt-4">
                       {isAuthenticated ? (
                         <Button variant="outline" className="w-full justify-start text-base py-3 h-auto" onClick={handleLogout}>
-                          <LogOut className="mr-3 h-5 w-5" /> Logout
+                          <LogOut className="mr-3 h-5 w-5" /> {role === 'guest' ? 'Quitter le mode invité' : 'Logout'}
                         </Button>
                       ) : (
                         <Button variant="outline" className="w-full justify-start text-base py-3 h-auto" asChild>

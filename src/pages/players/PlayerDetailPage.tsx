@@ -153,7 +153,7 @@ export default function PlayerDetailPage() {
               </div>
             </div>
           </div>
-          {role && (
+          {role === 'admin' && (
             <Button asChild variant="outline">
               <Link to={`/players/${player.id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" /> Edit Player

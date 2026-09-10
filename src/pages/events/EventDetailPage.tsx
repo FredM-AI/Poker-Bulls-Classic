@@ -38,8 +38,7 @@ export default function EventDetailPage() {
   const { data: allPlayers, isLoading: isPlayersLoading } = usePlayers()
   const { data: seasons, isLoading: isSeasonsLoading } = useSeasons()
   const { data: blindStructures, isLoading: isBlindsLoading } = useBlindStructures()
-  const { role } = useAuth()
-  const isAuthenticated = !!role
+  const { role, canManage } = useAuth()
   const isAdmin = role === 'admin'
 
   const isLoading = isEventLoading || isEventsLoading || isPlayersLoading || isSeasonsLoading || isBlindsLoading
@@ -113,7 +112,7 @@ export default function EventDetailPage() {
                 </Link>
               )}
             </div>
-            {isAuthenticated && (
+            {canManage && (
               <div className="flex flex-col sm:flex-row gap-2 mt-2 md:mt-0">
                 {event.status === 'active' && (
                   <Button asChild size="sm" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
@@ -122,7 +121,7 @@ export default function EventDetailPage() {
                     </Link>
                   </Button>
                 )}
-                {isAuthenticated && <GoLiveButton eventId={event.id} currentStatus={event.status} />}
+                <GoLiveButton eventId={event.id} currentStatus={event.status} />
                 {isAdmin && (
                   <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
                     <Link to={`/events/${event.id}/edit`}>

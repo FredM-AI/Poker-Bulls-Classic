@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
 
 export default function RequireAuth({ children, adminOnly }: { children: React.ReactNode; adminOnly?: boolean }) {
-  const { role, isLoading } = useAuth()
+  const { role, canManage, isLoading } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
@@ -14,7 +14,9 @@ export default function RequireAuth({ children, adminOnly }: { children: React.R
     )
   }
 
-  if (!role) {
+  // canManage (admin or floor_manager) rather than "any role", so guest mode
+  // never grants access to management routes.
+  if (!canManage) {
     return <Navigate to={`/login?redirectedFrom=${encodeURIComponent(location.pathname)}`} replace />
   }
 
