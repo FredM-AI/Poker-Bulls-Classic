@@ -36,27 +36,76 @@ function App() {
           <Route
             path="/settings"
             element={
-              <RequireAuth>
+              <RequireAuth adminOnly>
                 <SettingsPage />
               </RequireAuth>
             }
           />
 
           <Route path="/players" element={<PlayersPage />} />
-          <Route path="/players/new" element={<PlayerNewPage />} />
+          <Route
+            path="/players/new"
+            element={
+              <RequireAuth adminOnly>
+                <PlayerNewPage />
+              </RequireAuth>
+            }
+          />
           <Route path="/players/:playerId" element={<PlayerDetailPage />} />
-          <Route path="/players/:playerId/edit" element={<PlayerEditPage />} />
+          <Route
+            path="/players/:playerId/edit"
+            element={
+              <RequireAuth adminOnly>
+                <PlayerEditPage />
+              </RequireAuth>
+            }
+          />
 
           <Route path="/events" element={<EventsPage />} />
-          <Route path="/events/new" element={<EventNewPage />} />
+          <Route
+            path="/events/new"
+            element={
+              <RequireAuth adminOnly>
+                <EventNewPage />
+              </RequireAuth>
+            }
+          />
           <Route path="/events/:eventId" element={<EventDetailPage />} />
-          <Route path="/events/:eventId/edit" element={<EventEditPage />} />
-          <Route path="/events/:eventId/live" element={<EventLivePage />} />
+          <Route
+            path="/events/:eventId/edit"
+            element={
+              <RequireAuth adminOnly>
+                <EventEditPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/events/:eventId/live"
+            element={
+              <RequireAuth>
+                <EventLivePage />
+              </RequireAuth>
+            }
+          />
 
           <Route path="/seasons" element={<SeasonsPage />} />
-          <Route path="/seasons/new" element={<SeasonNewPage />} />
+          <Route
+            path="/seasons/new"
+            element={
+              <RequireAuth adminOnly>
+                <SeasonNewPage />
+              </RequireAuth>
+            }
+          />
           <Route path="/seasons/:seasonId" element={<SeasonDetailPage />} />
-          <Route path="/seasons/:seasonId/edit" element={<SeasonEditPage />} />
+          <Route
+            path="/seasons/:seasonId/edit"
+            element={
+              <RequireAuth adminOnly>
+                <SeasonEditPage />
+              </RequireAuth>
+            }
+          />
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

@@ -110,7 +110,17 @@ create table if not exists app_settings (
 insert into app_settings (id) values (1) on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
--- Row Level Security: public read, authenticated write
+-- Row Level Security: public read, role-aware write
+--
+-- Roles are stored in auth.users.raw_app_meta_data.role ('admin' | 'floor_manager'),
+-- NEVER in raw_user_meta_data / user_metadata: that field is editable by the signed-in
+-- user themselves via the client SDK (supabase.auth.updateUser), so using it in an RLS
+-- policy would let anyone grant themselves admin. app_metadata can only be changed by
+-- an admin/service_role (e.g. via the SQL editor), which is what these policies rely on.
+--
+-- admin: full write access everywhere.
+-- floor_manager: can run live tournaments (go live, edit participants & results) but
+-- cannot manage players, seasons, blind structures, settings, or create/delete/edit events.
 -- ---------------------------------------------------------------------------
 alter table players enable row level security;
 alter table seasons enable row level security;
@@ -130,8 +140,50 @@ begin
     execute format('create policy "%1$s_select_all" on %1$s for select using (true)', t);
 
     execute format('drop policy if exists "%1$s_write_authenticated" on %1$s', t);
+  end loop;
+end $$;
+
+-- Admin-only write: players, seasons, blind_structures, app_settings
+do $$
+declare
+  t text;
+begin
+  for t in select unnest(array['players', 'seasons', 'blind_structures', 'app_settings'])
+  loop
+    execute format('drop policy if exists "%1$s_write_admin" on %1$s', t);
     execute format(
-      'create policy "%1$s_write_authenticated" on %1$s for all to authenticated using (true) with check (true)',
+      'create policy "%1$s_write_admin" on %1$s for all to authenticated using ((auth.jwt() -> ''app_metadata'' ->> ''role'') = ''admin'') with check ((auth.jwt() -> ''app_metadata'' ->> ''role'') = ''admin'')',
+      t
+    );
+  end loop;
+end $$;
+
+-- Events: create/delete admin-only (structural setup); update allowed for admin +
+-- floor_manager (needed for go-live status change and marking an event completed
+-- after live play).
+drop policy if exists "events_insert_admin" on events;
+create policy "events_insert_admin" on events for insert to authenticated
+  with check ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+drop policy if exists "events_delete_admin" on events;
+create policy "events_delete_admin" on events for delete to authenticated
+  using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+drop policy if exists "events_update_admin_or_floor" on events;
+create policy "events_update_admin_or_floor" on events for update to authenticated
+  using ((auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'floor_manager'))
+  with check ((auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'floor_manager'));
+
+-- event_participants, event_results: admin + floor_manager (core live-tournament operations)
+do $$
+declare
+  t text;
+begin
+  for t in select unnest(array['event_participants', 'event_results'])
+  loop
+    execute format('drop policy if exists "%1$s_write_admin_or_floor" on %1$s', t);
+    execute format(
+      'create policy "%1$s_write_admin_or_floor" on %1$s for all to authenticated using ((auth.jwt() -> ''app_metadata'' ->> ''role'') in (''admin'', ''floor_manager'')) with check ((auth.jwt() -> ''app_metadata'' ->> ''role'') in (''admin'', ''floor_manager''))',
       t
     );
   end loop;

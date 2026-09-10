@@ -21,7 +21,7 @@ const statusBadgeClass: Record<Event['status'], string> = {
   cancelled: 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300',
 }
 
-const EventTable = ({ events, isAuthenticated, allPlayers }: { events: Event[]; isAuthenticated: boolean; allPlayers: Player[] }) => {
+const EventTable = ({ events, isAdmin, allPlayers }: { events: Event[]; isAdmin: boolean; allPlayers: Player[] }) => {
   if (events.length === 0) {
     return <p className="text-muted-foreground text-sm py-4">No events in this category.</p>
   }
@@ -72,7 +72,7 @@ const EventTable = ({ events, isAuthenticated, allPlayers }: { events: Event[]; 
                     <Eye className="h-4 w-4" />
                   </Link>
                 </Button>
-                {isAuthenticated && (
+                {isAdmin && (
                   <Button variant="outline" size="icon" className="h-8 w-8" asChild title="Edit Event">
                     <Link to={`/events/${event.id}/edit`}>
                       <Edit className="h-4 w-4" />
@@ -93,7 +93,6 @@ export default function EventsPage() {
   const { data: seasons, isLoading: isSeasonsLoading } = useSeasons()
   const { data: allPlayers, isLoading: isPlayersLoading } = usePlayers()
   const { role } = useAuth()
-  const isAuthenticated = !!role
   const isAdmin = role === 'admin'
 
   const isLoading = isEventsLoading || isSeasonsLoading || isPlayersLoading
@@ -181,7 +180,7 @@ export default function EventsPage() {
                         </CardHeader>
                         <CardContent className="pt-0">
                           {seasonEvents.length > 0 ? (
-                            <EventTable events={seasonEvents} isAuthenticated={isAuthenticated} allPlayers={allPlayers ?? []} />
+                            <EventTable events={seasonEvents} isAdmin={isAdmin} allPlayers={allPlayers ?? []} />
                           ) : (
                             <p className="text-muted-foreground text-sm py-4 text-center">No events scheduled for this season yet.</p>
                           )}
@@ -212,7 +211,7 @@ export default function EventsPage() {
                     </AccordionTrigger>
                     <AccordionContent className="p-0">
                       <CardContent className="pt-0">
-                        <EventTable events={unassignedEvents} isAuthenticated={isAuthenticated} allPlayers={allPlayers ?? []} />
+                        <EventTable events={unassignedEvents} isAdmin={isAdmin} allPlayers={allPlayers ?? []} />
                       </CardContent>
                     </AccordionContent>
                   </Card>

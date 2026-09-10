@@ -122,7 +122,7 @@ export default function EventDetailPage() {
                     </Link>
                   </Button>
                 )}
-                {isAdmin && <GoLiveButton eventId={event.id} currentStatus={event.status} />}
+                {isAuthenticated && <GoLiveButton eventId={event.id} currentStatus={event.status} />}
                 {isAdmin && (
                   <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
                     <Link to={`/events/${event.id}/edit`}>

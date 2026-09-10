@@ -14,7 +14,10 @@ type AuthContextValue = {
 const AuthContext = React.createContext<AuthContextValue | undefined>(undefined)
 
 function getRole(session: Session | null): UserRole | null {
-  const role = session?.user?.user_metadata?.role
+  // app_metadata (not user_metadata) because it can only be set by an admin/service_role,
+  // never by the signed-in user themselves — user_metadata is client-editable and must
+  // never be used for authorization decisions.
+  const role = session?.user?.app_metadata?.role
   return role === 'admin' || role === 'floor_manager' ? role : null
 }
 

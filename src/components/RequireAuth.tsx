@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
 
-export default function RequireAuth({ children }: { children: React.ReactNode }) {
+export default function RequireAuth({ children, adminOnly }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { role, isLoading } = useAuth()
   const location = useLocation()
 
@@ -16,6 +16,10 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (!role) {
     return <Navigate to={`/login?redirectedFrom=${encodeURIComponent(location.pathname)}`} replace />
+  }
+
+  if (adminOnly && role !== 'admin') {
+    return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>
