@@ -1,5 +1,5 @@
 import { Crown } from 'lucide-react'
-import type { ParticipantState } from './LivePlayerTracking'
+import type { ParticipantState } from '@/lib/types'
 
 interface LivePrizePoolProps {
   totalPrizePool: number

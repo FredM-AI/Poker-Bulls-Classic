@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { Player } from '@/lib/types'
+import type { Player, ParticipantState } from '@/lib/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { PlusCircle, MinusCircle, UserPlus, UserX, UserCheck, Trash2, Undo, Star, Gift } from 'lucide-react'
@@ -9,16 +9,6 @@ import { Input } from './ui/input'
 import { cn } from '@/lib/utils'
 import { Label } from './ui/label'
 import { getPlayerDisplayName } from '@/lib/stats-service'
-
-export interface ParticipantState {
-  id: string
-  name: string
-  isGuest: boolean
-  rebuys: number
-  bountiesWon: number
-  mysteryKoWon: number
-  eliminatedPosition: number | null
-}
 
 interface LivePlayerTrackingProps {
   participants: ParticipantState[]

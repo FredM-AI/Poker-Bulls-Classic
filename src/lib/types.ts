@@ -72,6 +72,37 @@ export type BlindStructureTemplate = {
   startingStack?: number
 }
 
+export type ParticipantState = {
+  id: string
+  name: string
+  isGuest: boolean
+  rebuys: number
+  bountiesWon: number
+  mysteryKoWon: number
+  eliminatedPosition: number | null
+}
+
+export type LiveTimerState = {
+  currentLevelIndex: number
+  timeLeft: number
+  totalTime: number
+  isPaused: boolean
+}
+
+/**
+ * Periodic server-side backup of an in-progress live tournament — everything
+ * needed to resume on a different device (or after localStorage is lost).
+ * Single "latest" snapshot per event; see data-service.ts::saveLiveState.
+ */
+export type LiveTournamentState = {
+  participants: ParticipantState[]
+  activeStructureId: string
+  activeStructure: BlindLevel[]
+  startingStack?: number
+  timer: LiveTimerState
+  savedAt: string
+}
+
 export type Event = {
   id: string
   name: string
@@ -94,6 +125,8 @@ export type Event = {
   blindStructure?: BlindLevel[]
   participants: string[]
   results: EventResult[]
+  liveState?: LiveTournamentState | null
+  liveStateUpdatedAt?: string | null
   createdAt: string
   updatedAt: string
 }

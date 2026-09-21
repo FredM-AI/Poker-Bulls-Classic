@@ -6,6 +6,7 @@ import type {
   Event,
   EventResult,
   EventStatus,
+  LiveTournamentState,
   Player,
   Season,
 } from './types'
@@ -78,6 +79,8 @@ function mapEvent(
     blindStructure: row.blind_structure_snapshot ?? undefined,
     participants,
     results,
+    liveState: row.live_state ?? null,
+    liveStateUpdatedAt: row.live_state_updated_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -532,6 +535,8 @@ export async function saveLiveResults(
     .update({
       status: 'completed' as EventStatus,
       prize_pool_total: finalPrizePoolTotal,
+      live_state: null,
+      live_state_updated_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', eventId)
@@ -541,6 +546,21 @@ export async function saveLiveResults(
     participantIds: finalParticipantIds,
     results: finalResults,
   } as EventInput)
+}
+
+/**
+ * Periodic backup of in-progress live tournament state (see LiveTournamentState).
+ * Fire-and-forget from the live page every ~20s — intentionally does not throw
+ * on failure (a missed backup shouldn't interrupt someone running a live table)
+ * and does not go through react-query, since the live UI's own component state
+ * is always the source of truth while it's mounted.
+ */
+export async function saveLiveState(eventId: string, state: LiveTournamentState): Promise<void> {
+  const { error } = await supabase
+    .from('events')
+    .update({ live_state: state, live_state_updated_at: state.savedAt })
+    .eq('id', eventId)
+  if (error) console.error('Failed to save live tournament backup:', error)
 }
 
 // ---------------------------------------------------------------------------

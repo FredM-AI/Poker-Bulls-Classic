@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import type { Event, BlindLevel, Player } from '@/lib/types'
-import type { ParticipantState } from './LivePlayerTracking'
+import type { Event, BlindLevel, Player, ParticipantState, LiveTimerState } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogClose, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { X, Play, Pause, FastForward, Rewind, Settings, Expand, Shrink, Sun, Moon, Users, RefreshCw, Save, Loader2 } from 'lucide-react'
@@ -29,6 +28,7 @@ interface PokerTimerModalProps {
   onEliminatePlayer: (playerId: string) => void
   onUndoLastElimination: () => void
   onStructureUpdate: (newStructure: BlindLevel[]) => void
+  onTimerStateChange?: (timerState: LiveTimerState) => void
   refreshBlindStructures: () => Promise<void>
   totalPrizePool: number
   payoutStructure: { position: number; prize: number }[]
@@ -78,6 +78,7 @@ export default function PokerTimerModal({
   onEliminatePlayer,
   onUndoLastElimination,
   onStructureUpdate,
+  onTimerStateChange,
   refreshBlindStructures,
   totalPrizePool,
   payoutStructure,
@@ -163,6 +164,8 @@ export default function PokerTimerModal({
     } catch (e) {
       console.error('Failed to save timer state to localStorage', e)
     }
+    onTimerStateChange?.({ currentLevelIndex, timeLeft, totalTime, isPaused })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLevelIndex, timeLeft, totalTime, isPaused, timerStorageKey])
 
   useEffect(() => {

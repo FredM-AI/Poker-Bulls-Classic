@@ -107,7 +107,7 @@ append to the changelog, don't rewrite history.
   pre-existing spots (Edit Player / Edit Season buttons) that had the same
   "any authenticated role" bug, predating guest mode.
 
-### 2026-09-10 — Live tournament timer responsive fixes (in progress)
+### 2026-09-10 — Live tournament timer responsive fixes
 - Found via testing at 1280×720 and 390×844 (mobile): `PokerTimerModal`
   (`src/components/PokerTimerModal.tsx` + `src/poker-timer.css`) has a fixed
   `flex-row` layout with a hardcoded `w-[350px]` stats sidebar that never
@@ -117,4 +117,42 @@ append to the changelog, don't rewrite history.
   Level" bar invisible), and on mobile the countdown text visually overlaps
   the blinds text while the stats panel's numeric values are pushed off
   screen entirely.
-- Fix in progress — kept **local only**, not pushed, per standing rule #1.
+- Fixed and pushed (commit `9e8ccaa`).
+
+### 2026-09-21 — Server-side live tournament backup (crash/device recovery)
+- Live tournament state (participants, eliminations, rebuys, timer position)
+  was previously only in browser localStorage — a crashed browser, lost
+  device, or someone else picking up on a different device mid-tournament
+  had no way to recover, only the final result save at the very end touched
+  Supabase. User explicitly wanted **multi-device resilience** via periodic
+  server backups (not just a local-storage safety net), with **latest-state-
+  only** semantics (no history of restore points — simpler, sufficient).
+- Added `events.live_state` (jsonb) + `events.live_state_updated_at`
+  (timestamptz) columns. No RLS policy change needed — already covered by
+  the existing `events_update_admin_or_floor` policy (plain UPDATE).
+- `LiveTournamentState` type (participants, activeStructureId,
+  activeStructure, startingStack, timer, savedAt) added to `src/lib/types.ts`
+  — also moved `ParticipantState` there from `LivePlayerTracking.tsx` so both
+  `data-service.ts` and the live components could share one definition.
+- `LiveTournamentClient.tsx` autosaves to Supabase every 20s while live and
+  unfinished (via refs so the interval doesn't reset on every keystroke/tick;
+  `PokerTimerModal` reports its timer sub-state up through a new
+  `onTimerStateChange` callback rather than owning a second, disconnected
+  save loop that could clobber the same jsonb column). Backup is cleared
+  (`live_state = null`) in `saveLiveResults` once a tournament is finalized.
+- On mount, compares the local save's timestamp against the server's; if the
+  server backup is newer (fresh device, or local storage was cleared —
+  normal same-device continued use is unaffected since local always saves
+  faster than the 20s server cadence), shows a blocking "Server backup
+  available" dialog to restore or ignore. `PokerTimerModal` is now gated
+  behind `hydrated` so it doesn't read its own localStorage timer keys
+  before a restore decision (if any) has written the correct values there.
+- Tested end-to-end manually: went live on a real draft event via the UI,
+  added participants, eliminated one, confirmed the row appeared in
+  `events.live_state` after ~20s; cleared localStorage and reload correctly
+  showed the restore prompt and restored participants/timer exactly; the
+  "Ignore" path also verified (falls back cleanly, no console errors). Test
+  event reset back to `draft` and its `live_state` cleared afterward — no
+  permanent data was written (participants/results only get written to
+  `event_participants`/`event_results` by `saveLiveResults` at the very end,
+  which was never called during this test).

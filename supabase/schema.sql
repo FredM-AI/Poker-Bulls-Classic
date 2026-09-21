@@ -66,6 +66,12 @@ create table if not exists events (
   prize_pool_distribution jsonb not null default '[]',
   blind_structure_id text references blind_structures(id) on delete set null,
   blind_structure_snapshot jsonb,
+  -- Periodic server-side backup of in-progress live tournament state (participants,
+  -- timer position, etc.), so a crashed browser / lost device / cleared localStorage
+  -- doesn't lose live progress. Single "latest" snapshot, cleared once results are
+  -- finalized via saveLiveResults. See src/lib/data-service.ts::saveLiveState.
+  live_state jsonb,
+  live_state_updated_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

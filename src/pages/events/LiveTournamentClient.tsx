@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import type { Event, Player, BlindLevel, BlindStructureTemplate, EventResult } from '@/lib/types'
+import type { Event, Player, BlindLevel, BlindStructureTemplate, EventResult, ParticipantState, LiveTimerState, LiveTournamentState } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Clock, Settings, List, Banknote, Cpu, Save, Loader2, RefreshCw } from 'lucide-react'
@@ -10,12 +10,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import LivePlayerTracking, { type ParticipantState } from '@/components/LivePlayerTracking'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import LivePlayerTracking from '@/components/LivePlayerTracking'
 import LivePrizePool from '@/components/LivePrizePool'
 import * as dataService from '@/lib/data-service'
 import { useToast } from '@/hooks/use-toast'
 import { useInvalidateAll } from '@/hooks/useData'
 import { getPlayerDisplayName } from '@/lib/stats-service'
+import { formatDistanceToNow } from 'date-fns'
 
 interface LiveTournamentClientProps {
   event: Event
@@ -63,11 +74,14 @@ export default function LiveTournamentClient({ event: initialEvent, players: all
   const invalidateAll = useInvalidateAll()
 
   const storageKey = `live-event-state-${initialEvent.id}`
+  const timerStorageKey = `poker-timer-state-${initialEvent.id}`
 
   const [event, setEvent] = React.useState<Event>(initialEvent)
   const [participants, setParticipants] = React.useState<ParticipantState[]>(() => getInitialParticipants(initialEvent, allPlayers))
   const [availablePlayers, setAvailablePlayers] = React.useState<Player[]>([])
   const [hydrated, setHydrated] = React.useState(false)
+  const [serverBackup, setServerBackup] = React.useState<LiveTournamentState | null>(null)
+  const [showRestorePrompt, setShowRestorePrompt] = React.useState(false)
 
   const [activeStructureId, setActiveStructureId] = React.useState<string>(
     initialEvent.blindStructureId || (initialBlindStructures.length > 0 ? initialBlindStructures[0].id : 'custom'),
@@ -78,27 +92,99 @@ export default function LiveTournamentClient({ event: initialEvent, players: all
     return selected?.levels || initialEvent.blindStructure || defaultBlindStructure
   })
 
+  // Everything the periodic backup needs, mirrored into refs so the autosave
+  // interval always reads the latest values without resetting its cadence.
+  const participantsRef = React.useRef(participants)
   React.useEffect(() => {
+    participantsRef.current = participants
+  }, [participants])
+  const activeStructureIdRef = React.useRef(activeStructureId)
+  React.useEffect(() => {
+    activeStructureIdRef.current = activeStructureId
+  }, [activeStructureId])
+  const activeStructureRef = React.useRef(activeStructure)
+  React.useEffect(() => {
+    activeStructureRef.current = activeStructure
+  }, [activeStructure])
+  const startingStackRef = React.useRef(event.startingStack)
+  React.useEffect(() => {
+    startingStackRef.current = event.startingStack
+  }, [event.startingStack])
+  const timerStateRef = React.useRef<LiveTimerState>({ currentLevelIndex: 0, timeLeft: 0, totalTime: 0, isPaused: true })
+  const handleTimerStateChange = React.useCallback((timerState: LiveTimerState) => {
+    timerStateRef.current = timerState
+  }, [])
+  const pendingLocalRef = React.useRef<any>(null)
+
+  const applyLocalState = (savedState: any) => {
+    if (savedState?.participants) setParticipants(savedState.participants)
+    if (savedState?.activeStructureId) setActiveStructureId(savedState.activeStructureId)
+    if (savedState?.activeStructure) setActiveStructure(savedState.activeStructure)
+    if (savedState?.startingStack) setEvent((prev) => ({ ...prev, startingStack: savedState.startingStack }))
+  }
+
+  const applyServerState = (backup: LiveTournamentState) => {
+    setParticipants(backup.participants)
+    setActiveStructureId(backup.activeStructureId)
+    setActiveStructure(backup.activeStructure)
+    setEvent((prev) => ({ ...prev, startingStack: backup.startingStack }))
+    // PokerTimerModal reads its own localStorage keys on first mount (gated behind
+    // `hydrated` below), so write the restored timer values there before it mounts.
+    try {
+      window.localStorage.setItem(`${timerStorageKey}-level`, JSON.stringify(backup.timer.currentLevelIndex))
+      window.localStorage.setItem(`${timerStorageKey}-time`, JSON.stringify(backup.timer.timeLeft))
+      window.localStorage.setItem(`${timerStorageKey}-totalTime`, JSON.stringify(backup.timer.totalTime))
+      window.localStorage.setItem(`${timerStorageKey}-paused`, JSON.stringify(backup.timer.isPaused))
+    } catch (error) {
+      console.error('Error writing restored timer state to localStorage:', error)
+    }
+  }
+
+  React.useEffect(() => {
+    let localSaved: any = null
     try {
       const item = window.localStorage.getItem(storageKey)
-      if (item) {
-        const savedState = JSON.parse(item)
-        if (savedState.participants) setParticipants(savedState.participants)
-        if (savedState.activeStructureId) setActiveStructureId(savedState.activeStructureId)
-        if (savedState.activeStructure) setActiveStructure(savedState.activeStructure)
-        if (savedState.startingStack) setEvent((prev) => ({ ...prev, startingStack: savedState.startingStack }))
-      }
+      if (item) localSaved = JSON.parse(item)
     } catch (error) {
       console.error(`Error reading localStorage key "${storageKey}":`, error)
     }
+
+    const serverState = initialEvent.liveState
+    const localSavedAt = localSaved?.savedAt ? new Date(localSaved.savedAt).getTime() : 0
+    const serverSavedAt = initialEvent.liveStateUpdatedAt ? new Date(initialEvent.liveStateUpdatedAt).getTime() : 0
+    const serverIsNewer = !!serverState && serverSavedAt > localSavedAt
+
+    if (serverIsNewer) {
+      // Keep the local save around so "Ignore" can fall back to it, and wait for
+      // the user's choice before marking hydrated (so PokerTimerModal doesn't
+      // mount and read stale localStorage before the decision is applied).
+      pendingLocalRef.current = localSaved
+      setServerBackup(serverState)
+      setShowRestorePrompt(true)
+      return
+    }
+
+    applyLocalState(localSaved)
     setHydrated(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey])
 
+  const handleRestoreFromServer = () => {
+    if (serverBackup) applyServerState(serverBackup)
+    setShowRestorePrompt(false)
+    setHydrated(true)
+  }
+
+  const handleDismissRestore = () => {
+    applyLocalState(pendingLocalRef.current)
+    setShowRestorePrompt(false)
+    setHydrated(true)
+  }
+
   React.useEffect(() => {
     if (!hydrated) return
     try {
-      const stateToSave = { participants, activeStructureId, activeStructure, startingStack: event.startingStack }
+      const stateToSave = { participants, activeStructureId, activeStructure, startingStack: event.startingStack, savedAt: new Date().toISOString() }
       window.localStorage.setItem(storageKey, JSON.stringify(stateToSave))
     } catch (error) {
       console.error('Error saving state to localStorage:', error)
@@ -230,6 +316,23 @@ export default function LiveTournamentClient({ event: initialEvent, players: all
 
   const isTournamentFinished = activeParticipantsCount <= 1 && participants.length > 0
 
+  // Periodic server-side backup so a crashed browser / lost device / cleared
+  // localStorage doesn't lose live progress — see data-service.ts::saveLiveState.
+  React.useEffect(() => {
+    if (!hydrated || isTournamentFinished) return
+    const intervalId = window.setInterval(() => {
+      dataService.saveLiveState(initialEvent.id, {
+        participants: participantsRef.current,
+        activeStructureId: activeStructureIdRef.current,
+        activeStructure: activeStructureRef.current,
+        startingStack: startingStackRef.current,
+        timer: timerStateRef.current,
+        savedAt: new Date().toISOString(),
+      })
+    }, 20000)
+    return () => window.clearInterval(intervalId)
+  }, [hydrated, isTournamentFinished, initialEvent.id])
+
   const handleSaveResults = async () => {
     if (!isTournamentFinished) return
     setIsSaving(true)
@@ -279,29 +382,49 @@ export default function LiveTournamentClient({ event: initialEvent, players: all
 
   return (
     <div className="space-y-6">
-      <PokerTimerModal
-        isOpen={isTimerModalOpen}
-        onOpenChange={setIsTimerModalOpen}
-        event={event}
-        participants={participants}
-        activeStructure={activeStructure}
-        onStructureUpdate={setActiveStructure}
-        allPlayers={allPlayers}
-        availablePlayers={availablePlayers}
-        onAddParticipant={addParticipant}
-        onRemoveParticipant={removeParticipant}
-        onRebuyChange={handleRebuyChange}
-        onBountyChange={handleBountyChange}
-        onMysteryKoChange={handleMysteryKoChange}
-        onEliminatePlayer={handleEliminatePlayer}
-        onUndoLastElimination={handleUndoLastElimination}
-        refreshBlindStructures={refreshBlindStructures}
-        totalPrizePool={totalPrizePool}
-        payoutStructure={payoutStructure}
-        isTournamentFinished={isTournamentFinished}
-        isSaving={isSaving}
-        onSaveResults={handleSaveResults}
-      />
+      <AlertDialog open={showRestorePrompt} onOpenChange={() => {}}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Server backup available</AlertDialogTitle>
+            <AlertDialogDescription>
+              A more recent backup of this live tournament was found on the server
+              {serverBackup?.savedAt ? ` (saved ${formatDistanceToNow(new Date(serverBackup.savedAt), { addSuffix: true })})` : ''}. This usually means
+              another device saved progress since this browser's local copy was last updated. Restore it to continue from there, or ignore it to keep
+              what's currently in this browser.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDismissRestore}>Ignore, keep this browser's state</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreFromServer}>Restore from server</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {hydrated && (
+        <PokerTimerModal
+          isOpen={isTimerModalOpen}
+          onOpenChange={setIsTimerModalOpen}
+          event={event}
+          participants={participants}
+          activeStructure={activeStructure}
+          onStructureUpdate={setActiveStructure}
+          onTimerStateChange={handleTimerStateChange}
+          allPlayers={allPlayers}
+          availablePlayers={availablePlayers}
+          onAddParticipant={addParticipant}
+          onRemoveParticipant={removeParticipant}
+          onRebuyChange={handleRebuyChange}
+          onBountyChange={handleBountyChange}
+          onMysteryKoChange={handleMysteryKoChange}
+          onEliminatePlayer={handleEliminatePlayer}
+          onUndoLastElimination={handleUndoLastElimination}
+          refreshBlindStructures={refreshBlindStructures}
+          totalPrizePool={totalPrizePool}
+          payoutStructure={payoutStructure}
+          isTournamentFinished={isTournamentFinished}
+          isSaving={isSaving}
+          onSaveResults={handleSaveResults}
+        />
+      )}
       {isStructureManagerOpen && (
         <BlindStructureManager
           isOpen={isStructureManagerOpen}
