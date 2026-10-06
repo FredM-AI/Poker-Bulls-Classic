@@ -147,6 +147,11 @@ export type AppSettings = {
   defaultMaxPlayers: number
 }
 
+export type SiteStats = {
+  totalVisits: number
+  adminVisits: number
+}
+
 export interface HofPlayerStat {
   player: Player
   value: number

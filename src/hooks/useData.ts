@@ -45,6 +45,10 @@ export function useSettings() {
   return useQuery({ queryKey: ['settings'], queryFn: dataService.getSettings })
 }
 
+export function useSiteStats() {
+  return useQuery({ queryKey: ['siteStats'], queryFn: dataService.getSiteStats })
+}
+
 export function useInvalidateAll() {
   const queryClient = useQueryClient()
   return () => {

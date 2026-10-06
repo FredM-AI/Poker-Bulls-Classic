@@ -9,6 +9,7 @@ import type {
   LiveTournamentState,
   Player,
   Season,
+  SiteStats,
 } from './types'
 
 // ---------------------------------------------------------------------------
@@ -590,4 +591,30 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
       default_max_players: settings.defaultMaxPlayers,
     })
   if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// Site visit stats (admin-only read; increment is public, see schema.sql)
+// ---------------------------------------------------------------------------
+
+export async function getSiteStats(): Promise<SiteStats> {
+  const { data, error } = await supabase.from('site_stats').select('*').eq('id', 1).maybeSingle()
+  if (error) throw error
+  if (!data) return { totalVisits: 0, adminVisits: 0 }
+  return {
+    totalVisits: Number(data.total_visits),
+    adminVisits: Number(data.admin_visits),
+  }
+}
+
+/**
+ * Records one site visit. Safe to call for anonymous/guest visitors — goes
+ * through a security-definer RPC rather than a direct table write, since
+ * only admins can read site_stats but everyone needs to be counted.
+ * Intentionally does not throw on failure (a missed count shouldn't break
+ * the app for a visitor).
+ */
+export async function recordVisit(isAdmin: boolean): Promise<void> {
+  const { error } = await supabase.rpc('increment_site_visit', { p_is_admin: isAdmin })
+  if (error) console.error('Failed to record site visit:', error)
 }

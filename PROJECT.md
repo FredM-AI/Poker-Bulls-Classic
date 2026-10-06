@@ -156,3 +156,27 @@ append to the changelog, don't rewrite history.
   permanent data was written (participants/results only get written to
   `event_participants`/`event_results` by `saveLiveResults` at the very end,
   which was never called during this test).
+
+### 2026-10-06 — Site visit counter (admin-only)
+- Added a "Site Visits" card on the Settings page (admin-only route already)
+  showing two stats: total visits and admin visits (visits where the
+  signed-in user is `admin`), per user request.
+- `site_stats` table (single row, `total_visits`/`admin_visits` bigints).
+  RLS `select` restricted to admin (same `app_metadata.role` pattern as
+  everywhere else). Writes go through a `security definer` RPC
+  (`increment_site_visit`) granted to `anon` + `authenticated`, since
+  everyone needs to be counted but only admins can read the counts — a
+  direct table write policy for anon would have meant either letting
+  everyone read it too, or a separate insert-only policy; the RPC is
+  simpler and the two expected "anon/authenticated can execute a
+  security-definer function" advisor warnings are intentional (the
+  function only increments integers, nothing else exposed).
+- One visit recorded per full app load (not per in-SPA route change), fired
+  from `App.tsx` once `useAuth()`'s initial session check resolves, guarded
+  by a ref so it never double-fires (relevant since `main.tsx` uses
+  `StrictMode`, which double-invokes effects in dev).
+- Tested end-to-end: anonymous page load → total +1, admin +0; admin login +
+  reload → both counters increment; confirmed via direct DB query and the
+  Settings page UI. Left the resulting small counts in place (4 total / 2
+  admin from testing) rather than resetting — real metric, no reason to
+  zero it out.
