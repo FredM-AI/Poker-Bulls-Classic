@@ -600,21 +600,20 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
 export async function getSiteStats(): Promise<SiteStats> {
   const { data, error } = await supabase.from('site_stats').select('*').eq('id', 1).maybeSingle()
   if (error) throw error
-  if (!data) return { totalVisits: 0, adminVisits: 0 }
-  return {
-    totalVisits: Number(data.total_visits),
-    adminVisits: Number(data.admin_visits),
-  }
+  if (!data) return { guestVisits: 0 }
+  return { guestVisits: Number(data.guest_visits) }
 }
 
 /**
- * Records one site visit. Safe to call for anonymous/guest visitors — goes
- * through a security-definer RPC rather than a direct table write, since
- * only admins can read site_stats but everyone needs to be counted.
- * Intentionally does not throw on failure (a missed count shouldn't break
- * the app for a visitor).
+ * Records one guest-mode activation ("Continue as Guest" on the login page).
+ * Goes through a security-definer RPC (anon-only) rather than a direct table
+ * write, since only admins can read site_stats but guests need to be
+ * counted. Deduplication against repeated clicks/reloads within the same
+ * browser tab happens client-side — see useAuth.tsx::continueAsGuest.
+ * Intentionally does not throw on failure (a missed count shouldn't block
+ * guest mode from working).
  */
-export async function recordVisit(isAdmin: boolean): Promise<void> {
-  const { error } = await supabase.rpc('increment_site_visit', { p_is_admin: isAdmin })
-  if (error) console.error('Failed to record site visit:', error)
+export async function recordGuestVisit(): Promise<void> {
+  const { error } = await supabase.rpc('increment_guest_visit')
+  if (error) console.error('Failed to record guest visit:', error)
 }

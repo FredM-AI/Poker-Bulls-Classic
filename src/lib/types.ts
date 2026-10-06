@@ -148,8 +148,7 @@ export type AppSettings = {
 }
 
 export type SiteStats = {
-  totalVisits: number
-  adminVisits: number
+  guestVisits: number
 }
 
 export interface HofPlayerStat {

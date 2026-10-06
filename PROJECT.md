@@ -157,26 +157,40 @@ append to the changelog, don't rewrite history.
   `event_participants`/`event_results` by `saveLiveResults` at the very end,
   which was never called during this test).
 
-### 2026-10-06 — Site visit counter (admin-only)
-- Added a "Site Visits" card on the Settings page (admin-only route already)
-  showing two stats: total visits and admin visits (visits where the
-  signed-in user is `admin`), per user request.
-- `site_stats` table (single row, `total_visits`/`admin_visits` bigints).
-  RLS `select` restricted to admin (same `app_metadata.role` pattern as
-  everywhere else). Writes go through a `security definer` RPC
-  (`increment_site_visit`) granted to `anon` + `authenticated`, since
-  everyone needs to be counted but only admins can read the counts — a
-  direct table write policy for anon would have meant either letting
-  everyone read it too, or a separate insert-only policy; the RPC is
-  simpler and the two expected "anon/authenticated can execute a
-  security-definer function" advisor warnings are intentional (the
-  function only increments integers, nothing else exposed).
-- One visit recorded per full app load (not per in-SPA route change), fired
-  from `App.tsx` once `useAuth()`'s initial session check resolves, guarded
-  by a ref so it never double-fires (relevant since `main.tsx` uses
-  `StrictMode`, which double-invokes effects in dev).
-- Tested end-to-end: anonymous page load → total +1, admin +0; admin login +
-  reload → both counters increment; confirmed via direct DB query and the
-  Settings page UI. Left the resulting small counts in place (4 total / 2
-  admin from testing) rather than resetting — real metric, no reason to
-  zero it out.
+### 2026-10-06 — Site visit counter: built, then reworked to guest-only
+- First version: a "Site Visits" card on Settings showing total visits +
+  admin visits, incremented once per full app load from `App.tsx` (ref-
+  guarded against React 18 StrictMode's dev-only double effect invoke).
+- User reported the counter incrementing by 2 per reload. Root cause turned
+  out to be **two browser tabs open at once** (each tab independently
+  records its own visit — correct behavior, not a bug), confirmed by the
+  user after I couldn't reproduce a same-tab double-count in two separate
+  `location.reload()` tests with before/after DB counts.
+- While discussing that, the user changed the spec: counting every page
+  load (including the admin's own routine browsing/reloading while managing
+  the club) wasn't a meaningful metric. **Reworked to a single counter**:
+  how many times someone activates guest mode ("Continuer en tant qu'invité"
+  on the login page), which is the only moment that actually represents a
+  real outside visitor rather than admin/floor_manager usage.
+  - `site_stats.total_visits`/`admin_visits` → single `guest_visits` column.
+  - `increment_site_visit(p_is_admin boolean)` RPC → `increment_guest_visit()`
+    (no args), called from `useAuth.tsx::continueAsGuest` instead of
+    `App.tsx`. `App.tsx`'s tracking effect was removed entirely.
+  - Execute grant narrowed to `anon` only (authenticated users never reach
+    the guest button — `LoginPage` redirects them away before they could
+    click it). Note: Supabase grants EXECUTE on new public-schema functions
+    to `anon`+`authenticated` *directly* by default (not just via the
+    `PUBLIC` role) — `revoke ... from public` alone doesn't touch that
+    direct grant, had to `revoke ... from authenticated` explicitly too.
+  - Dedup against repeated clicks/reloads is now client-side via
+    `sessionStorage` (`pbc_guest_visit_recorded`) — once per tab, since
+    sessionStorage survives reloads/navigation but clears when the tab
+    closes. A genuinely new tab (or the same tab after closing/reopening)
+    counts as a new visit again, which is the intended granularity.
+- Tested end-to-end after the rework: reloading a public page no longer
+  increments anything; first guest-button click → +1; reload or re-click
+  guest mode again in the *same* tab → no change; a *second, fresh* browser
+  tab's first guest click → +1 again. All verified via direct DB count
+  deltas around each action. Reset the counter to 0 afterward (old
+  per-reload numbers weren't meaningful under the new semantics, and the
+  test clicks weren't real visits either).

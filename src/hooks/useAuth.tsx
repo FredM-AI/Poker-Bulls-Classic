@@ -2,8 +2,13 @@ import * as React from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { UserRole } from '@/lib/types'
+import * as dataService from '@/lib/data-service'
 
 const GUEST_STORAGE_KEY = 'pbc_guest_mode'
+// sessionStorage (not localStorage): cleared when the tab closes, so a guest
+// visit is only ever counted once per tab — reloads/re-clicks within the same
+// tab don't inflate the count, but a genuinely new tab/session does.
+const GUEST_VISIT_RECORDED_KEY = 'pbc_guest_visit_recorded'
 
 type AuthContextValue = {
   session: Session | null
@@ -55,6 +60,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const continueAsGuest = React.useCallback(() => {
     localStorage.setItem(GUEST_STORAGE_KEY, '1')
     setIsGuest(true)
+    if (!sessionStorage.getItem(GUEST_VISIT_RECORDED_KEY)) {
+      sessionStorage.setItem(GUEST_VISIT_RECORDED_KEY, '1')
+      dataService.recordGuestVisit()
+    }
   }, [])
 
   const logout = React.useCallback(async () => {

@@ -1,9 +1,6 @@
-import * as React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Header from '@/components/Header'
 import RequireAuth from '@/components/RequireAuth'
-import { useAuth } from '@/hooks/useAuth'
-import * as dataService from '@/lib/data-service'
 
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
@@ -27,15 +24,6 @@ import SeasonDetailPage from '@/pages/seasons/SeasonDetailPage'
 import SeasonEditPage from '@/pages/seasons/SeasonEditPage'
 
 function App() {
-  const { role, isLoading } = useAuth()
-  const hasRecordedVisit = React.useRef(false)
-
-  React.useEffect(() => {
-    if (isLoading || hasRecordedVisit.current) return
-    hasRecordedVisit.current = true
-    dataService.recordVisit(role === 'admin')
-  }, [isLoading, role])
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

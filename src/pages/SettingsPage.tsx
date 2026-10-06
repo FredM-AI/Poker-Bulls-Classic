@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Eye, ShieldCheck } from 'lucide-react'
+import { Loader2, Eye } from 'lucide-react'
 import { BlindStructureManagerForm } from '@/components/BlindStructureManager'
 import { useBlindStructures, useSiteStats } from '@/hooks/useData'
 
@@ -16,8 +16,8 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Site Visits</CardTitle>
-          <CardDescription>Visit counts since the stats started being tracked. Admin-only.</CardDescription>
+          <CardTitle>Guest Visits</CardTitle>
+          <CardDescription>Number of times someone has continued as a guest from the login page. Admin-only.</CardDescription>
         </CardHeader>
         <CardContent>
           {isSiteStatsLoading ? (
@@ -25,20 +25,11 @@ export default function SettingsPage() {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 rounded-lg border p-4">
-                <Eye className="h-6 w-6 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold font-headline">{(siteStats?.totalVisits ?? 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Visits</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 rounded-lg border p-4">
-                <ShieldCheck className="h-6 w-6 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold font-headline">{(siteStats?.adminVisits ?? 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Admin Visits</p>
-                </div>
+            <div className="flex items-center gap-3 rounded-lg border p-4 max-w-xs">
+              <Eye className="h-6 w-6 text-primary" />
+              <div>
+                <p className="text-2xl font-bold font-headline">{(siteStats?.guestVisits ?? 0).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Guest Visits</p>
               </div>
             </div>
           )}

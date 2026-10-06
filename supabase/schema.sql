@@ -116,15 +116,18 @@ create table if not exists app_settings (
 insert into app_settings (id) values (1) on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
--- Site visit stats (single row). Admin-only read; incremented via a
--- security-definer function (granted to anon + authenticated) rather than a
--- direct table write, so every visitor can be counted without being able to
--- read the counts themselves. See data-service.ts::recordVisit/getSiteStats.
+-- Site visit stats (single row): counts guest-mode activations ("Continue as
+-- Guest" on the login page). Admin-only read; incremented via a
+-- security-definer function granted to anon only (authenticated users never
+-- see the guest button) rather than a direct table write, so guests can be
+-- counted without being able to read the count themselves. Deduplication
+-- against repeated clicks/reloads within the same tab happens client-side
+-- (sessionStorage) — see useAuth.tsx::continueAsGuest and
+-- data-service.ts::recordGuestVisit/getSiteStats.
 -- ---------------------------------------------------------------------------
 create table if not exists site_stats (
   id integer primary key default 1 check (id = 1),
-  total_visits bigint not null default 0,
-  admin_visits bigint not null default 0,
+  guest_visits bigint not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -136,20 +139,19 @@ drop policy if exists "site_stats_select_admin" on site_stats;
 create policy "site_stats_select_admin" on site_stats for select to authenticated
   using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
-create or replace function increment_site_visit(p_is_admin boolean)
+create or replace function increment_guest_visit()
 returns void
 language sql
 security definer
 set search_path = public
 as $$
-  update site_stats
-  set total_visits = total_visits + 1,
-      admin_visits = admin_visits + case when p_is_admin then 1 else 0 end,
-      updated_at = now()
-  where id = 1;
+  update site_stats set guest_visits = guest_visits + 1, updated_at = now() where id = 1;
 $$;
 
-grant execute on function increment_site_visit(boolean) to anon, authenticated;
+-- Supabase grants EXECUTE on new public-schema functions to anon/authenticated
+-- directly by default — revoke from authenticated explicitly so only anon can
+-- call this (kept implicit for anon via the default grant).
+revoke execute on function increment_guest_visit() from authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security: public read, role-aware write
